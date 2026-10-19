@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hidden Sum Game</title>
+
+<style>
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f8;
+    text-align:center;
+    margin:20px;
+}
+
+#levelDisplay{
+    font-size:1.2rem;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+#timer{
+    font-size:1.4rem;
+    font-weight:bold;
+    color:#d32f2f;
+    margin:10px;
+}
+
+#score{
+    margin:10px;
+    font-size:1.2rem;
+}
+
+button{
+    padding:10px 20px;
+    font-size:1rem;
+    cursor:pointer;
+    margin-bottom:15px;
+}
+
+#game{
+    width:900px;
+    max-width:100%;
+    margin:auto;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+}
+
+.puzzle{
+    background:white;
+    border:4px solid black;
+    aspect-ratio:1;
+
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+}
+
+.cell{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    border:1px solid #999;
+
+    font-size:1.8rem;
+    font-weight:bold;
+
+    cursor:pointer;
+    user-select:none;
+}
+
+.cell:hover{
+    background:#eef7ff;
+}
+
+.selected{
+    background:gold;
+}
+
+.solved{
+    grid-column:1/4;
+    grid-row:1/4;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background:#4caf50;
+    color:white;
+
+    font-size:5rem;
+    font-weight:bold;
+}
+.failed{
+    grid-column:1/4;
+    grid-row:1/4;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background:#c62828;
+    color:white;
+
+    font-size:5rem;
+    font-weight:bold;
+}
+.finalBoard{
+    width:900px;
+    max-width:100%;
+    aspect-ratio:1;
+
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+
+    border:6px solid black;
+    background:white;
+}
+
+.finalWinner{
+    width:900px;
+    max-width:100%;
+    height:70vh;
+
+    margin:auto;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background:#4caf50;
+    color:white;
+
+    font-size:8rem;
+    font-weight:bold;
+}
+
+.confetti{
+    position:fixed;
+    width:10px;
+    height:10px;
+    top:-20px;
+    pointer-events:none;
+    animation:fall linear forwards;
+}
+
+@keyframes fall{
+    from{
+        transform:translateY(0) rotate(0deg);
+    }
+    to{
+        transform:translateY(110vh) rotate(720deg);
+    }
+}
+</style>
+</head>
+<body>
+
+<h1>🔍 Hidden Sum Game</h1>
+
+<div id="levelDisplay">Current Level: 1</div>
+
+<button onclick="resetGame()">🔄 New Game</button>
+
+<div id="timer">⏰ Time Left: 180</div>
+
+<div id="score">Solved: 0 / 9</div>
+
+<div id="message">
+Find the two numbers that add to another number in the grid.
+</div>
+
+<div id="game"></div>
+
+<script>
+
+const game = document.getElementById("game");
+
+let puzzles = [];
+let solvedCount = 0;
+let currentLevel = 1;
+let finalPuzzle = null;
+let timerInterval;
+let timeLeft = 180;
+
+function shuffle(arr){
+    const copy = [...arr];
+
+    for(let i=copy.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [copy[i],copy[j]] = [copy[j],copy[i]];
+    }
+
+    return copy;
+}
+
+function hasExactlyOneSolution(numbers){
+
+    let count = 0;
+
+    for(let i=0;i<numbers.length;i++){
+        for(let j=i+1;j<numbers.length;j++){
+
+            const target =
+            numbers[i] + numbers[j];
+
+            for(let k=0;k<numbers.length;k++){
+
+                if(
+                    k!==i &&
+                    k!==j &&
+                    numbers[k]===target
+                ){
+                    count++;
+                }
+            }
+        }
+    }
+
+    return count === 1;
+}
+
+function createPuzzle(){
+
+    while(true){
+
+        let a =
+        Math.floor(Math.random()*30)+1;
+
+        let b =
+        Math.floor(Math.random()*30)+1;
+
+        let sum = a+b;
+
+        let numbers = [a,b,sum];
+
+        while(numbers.length < 9){
+
+            let fake =
+            Math.floor(Math.random()*60)+1;
+
+            if(!numbers.includes(fake)){
+                numbers.push(fake);
+            }
+        }
+
+        if(hasExactlyOneSolution(numbers)){
+
+            return{
+                numbers:shuffle(numbers),
+                a,b,sum
+            };
+        }
+    }
+}
+
+function startTimer(){
+
+    clearInterval(timerInterval);
+
+    timeLeft = 180;
+
+    timerInterval = setInterval(()=>{
+
+        timeLeft--;
+
+        document.getElementById("timer").textContent =
+        `⏰ Time Left: ${timeLeft}`;
+
+        if(timeLeft <= 0){
+
+            clearInterval(timerInterval);
+
+            if(currentLevel === 1){
+                revealLevel1Answers();
+            
+            }
+        }
+
+    },1000);
+}
+
+function buildLevel1(){
+
+    game.innerHTML = "";
+
+    puzzles.forEach(puzzle=>{
+
+        const board =
+        document.createElement("div");
+
+        board.className="puzzle";
+
+        let selected=[];
+
+        puzzle.numbers.forEach(number=>{
+
+            const cell =
+            document.createElement("div");
+
+            cell.className="cell";
+            cell.textContent=number;
+
+            cell.addEventListener("click",()=>{
+
+                if(board.dataset.solved) return;
+
+                if(cell.classList.contains("selected"))
+                return;
+
+                selected.push(number);
+                cell.classList.add("selected");
+
+                if(selected.length===2){
+
+                    const correct =
+                    (selected[0]===puzzle.a &&
+                     selected[1]===puzzle.b) ||
+
+                    (selected[1]===puzzle.a &&
+                     selected[0]===puzzle.b);
+
+                    if(correct){
+
+                        solvedCount++;
+
+                        document.getElementById("score")
+                        .textContent =
+                        `Solved: ${solvedCount} / 9`;
+
+                        board.innerHTML =
+                        `<div class="solved">${puzzle.sum}</div>`;
+
+                        board.dataset.solved=true;
+
+                        if(solvedCount===9){
+                            setTimeout(
+                                showFinalPuzzle,
+                                500
+                            );
+                        }
+
+                    }else{
+
+                        setTimeout(()=>{
+
+                            selected=[];
+
+                            board.querySelectorAll(".selected")
+                            .forEach(c=>
+                                c.classList.remove("selected")
+                            );
+
+                        },250);
+                    }
+                }
+
+            });
+
+            board.appendChild(cell);
+
+        });
+
+        game.appendChild(board);
+
+    });
+}
+
+function showFinalPuzzle(){
+
+    clearInterval(timerInterval);
+
+    currentLevel = 2;
+
+    document.getElementById("levelDisplay")
+    .textContent =
+    "Current Level: 2";
+
+    document.getElementById("timer")
+    .style.color = "green";
+
+    document.getElementById("timer")
+    .textContent =
+    "👑 Boss Level - Unlimited Time";
+
+
+    const answers =
+    puzzles.map(p=>p.sum);
+
+    let a =
+    answers[Math.floor(Math.random()*answers.length)];
+
+    let b;
+
+    do{
+        b =
+        answers[Math.floor(Math.random()*answers.length)];
+    }
+    while(a===b);
+
+    const sum = a+b;
+
+    let numbers = [a,b,sum];
+
+    while(numbers.length < 9){
+
+        const fake =
+        Math.floor(Math.random()*80)+1;
+
+        if(!numbers.includes(fake)){
+            numbers.push(fake);
+        }
+    }
+
+    finalPuzzle = {
+        a,b,sum,
+        numbers:shuffle(numbers)
+    };
+
+    game.innerHTML="";
+
+    const board =
+    document.createElement("div");
+
+    board.className="finalBoard";
+
+    let selected=[];
+
+    finalPuzzle.numbers.forEach(number=>{
+
+        const cell =
+        document.createElement("div");
+
+        cell.className="cell";
+        cell.style.fontSize="3rem";
+        cell.textContent=number;
+
+        cell.addEventListener("click",()=>{
+
+            if(cell.classList.contains("selected"))
+            return;
+
+            selected.push(number);
+
+            cell.classList.add("selected");
+
+            if(selected.length===2){
+
+                const correct =
+                (selected[0]===a &&
+                 selected[1]===b) ||
+
+                (selected[1]===a &&
+                 selected[0]===b);
+
+                if(correct){
+
+                    clearInterval(timerInterval);
+
+                    celebrate();
+
+                    document.getElementById("levelDisplay")
+                    .textContent =
+                    "🏆 Completed";
+
+                    game.innerHTML =
+                    `<div class="finalWinner">
+                    🏆 ${sum}
+                    </div>`;
+
+                }else{
+
+                    setTimeout(()=>{
+
+                        selected=[];
+
+                        board.querySelectorAll(".selected")
+                        .forEach(c=>
+                            c.classList.remove("selected")
+                        );
+
+                    },250);
+                }
+            }
+
+        });
+
+        board.appendChild(cell);
+
+    });
+
+    game.appendChild(board);
+}
+
+function revealLevel1Answers(){
+
+    document.getElementById("message")
+    .textContent =
+    `⏰ Time Up! You solved ${solvedCount} out of 9 puzzles.`;
+
+    const boards =
+    document.querySelectorAll(".puzzle");
+
+    boards.forEach((board,index)=>{
+
+        if(board.dataset.solved) return;
+
+        board.innerHTML = "";
+
+        const reveal =
+        document.createElement("div");
+
+        reveal.className = "failed";
+
+        reveal.textContent =
+        puzzles[index].sum;
+
+        board.appendChild(reveal);
+
+    });
+}
+
+function revealLevel2Answer(){
+
+    game.innerHTML =
+    `<div class="finalWinner"
+    style="background:#c62828;font-size:3rem;">
+    ⏰ TIME UP<br><br>
+    ${finalPuzzle.a} + ${finalPuzzle.b} = ${finalPuzzle.sum}
+    </div>`;
+}
+
+function celebrate(){
+
+    for(let i=0;i<250;i++){
+
+        const dot =
+        document.createElement("div");
+
+        dot.className="confetti";
+
+        dot.style.left =
+        Math.random()*100 + "vw";
+
+        dot.style.background =
+        `hsl(${Math.random()*360},100%,50%)`;
+
+        dot.style.animationDuration =
+        (Math.random()*3+2)+"s";
+
+        document.body.appendChild(dot);
+
+        setTimeout(()=>{
+            dot.remove();
+        },5000);
+    }
+}
+
+function resetGame(){
+
+    clearInterval(timerInterval);
+
+    puzzles = [];
+    solvedCount = 0;
+    currentLevel = 1;
+    finalPuzzle = null;
+
+    document.getElementById("timer").style.color =
+    "#d32f2f";
+
+    document.getElementById("timer").textContent =
+    "⏰ Time Left: 180";
+
+    document.getElementById("levelDisplay").textContent =
+    "Current Level: 1";
+
+    document.getElementById("timer")
+    .textContent =
+    "⏰ Time Left: 180";
+
+    document.getElementById("score")
+    .textContent =
+    "Solved: 0 / 9";
+
+    document.getElementById("message")
+    .textContent =
+    "Find the two numbers that add to another number in the grid.";
+
+    for(let i=0;i<9;i++){
+        puzzles.push(createPuzzle());
+    }
+
+    buildLevel1();
+    startTimer();
+}
+
+resetGame();
+
+</script>
+
+</body>
+</html>
