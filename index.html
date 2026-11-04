@@ -19,10 +19,24 @@ body{
     margin-bottom:10px;
 }
 
+#highScore{
+    font-size:1.3rem;
+    font-weight:bold;
+    color:#1565c0;
+    margin:10px;
+}
+
 #timer{
     font-size:1.4rem;
     font-weight:bold;
     color:#d32f2f;
+    margin:10px;
+}
+
+  #scorePoints{
+    font-size:1.3rem;
+    font-weight:bold;
+    color:#f57c00;
     margin:10px;
 }
 
@@ -93,6 +107,7 @@ button{
     font-size:5rem;
     font-weight:bold;
 }
+
 .failed{
     grid-column:1/4;
     grid-row:1/4;
@@ -107,6 +122,8 @@ button{
     font-size:5rem;
     font-weight:bold;
 }
+
+
 .finalBoard{
     width:900px;
     max-width:100%;
@@ -163,9 +180,21 @@ button{
 
 <div id="levelDisplay">Current Level: 1</div>
 
+  <label for="difficulty">Difficulty:</label>
+
+<select id="difficulty">
+    <option value="easy">Easy (1-20)</option>
+    <option value="medium">Medium (1-40)</option>
+    <option value="hard">Hard (1-60)</option>
+</select>
+
 <button onclick="resetGame()">🔄 New Game</button>
 
-<div id="timer">⏰ Time Left: 180</div>
+<div id="timer">⏰ Time Left: 300</div>
+
+<div id="scorePoints">⭐ Score: 0</div>
+
+<div id="highScore">🏆 Best Score: 0</div>
 
 <div id="score">Solved: 0 / 9</div>
 
@@ -184,7 +213,11 @@ let solvedCount = 0;
 let currentLevel = 1;
 let finalPuzzle = null;
 let timerInterval;
-let timeLeft = 180;
+let timeLeft = 300;
+let score = 0;
+let bossBonus = 0;
+let highScore = 0;
+let maxNumber = 20;
 
 function shuffle(arr){
     const copy = [...arr];
@@ -227,20 +260,24 @@ function createPuzzle(){
 
     while(true){
 
-        let a =
-        Math.floor(Math.random()*30)+1;
+     const a =
+Math.floor(Math.random()*maxNumber)+1;
 
-        let b =
-        Math.floor(Math.random()*30)+1;
+const b =
+Math.floor(Math.random()*maxNumber)+1;   
 
         let sum = a+b;
+
+      if(sum > maxNumber){
+    continue;
+}
 
         let numbers = [a,b,sum];
 
         while(numbers.length < 9){
 
-            let fake =
-            Math.floor(Math.random()*60)+1;
+         const fake =
+Math.floor(Math.random()*maxNumber)+1;  
 
             if(!numbers.includes(fake)){
                 numbers.push(fake);
@@ -261,7 +298,7 @@ function startTimer(){
 
     clearInterval(timerInterval);
 
-    timeLeft = 180;
+    timeLeft = 300;
 
     timerInterval = setInterval(()=>{
 
@@ -276,7 +313,6 @@ function startTimer(){
 
             if(currentLevel === 1){
                 revealLevel1Answers();
-            
             }
         }
 
@@ -327,6 +363,11 @@ function buildLevel1(){
 
                         solvedCount++;
 
+                        score += 10;
+
+    document.getElementById("scorePoints").textContent =
+    `⭐ Score: ${score}`;
+
                         document.getElementById("score")
                         .textContent =
                         `Solved: ${solvedCount} / 9`;
@@ -371,6 +412,10 @@ function buildLevel1(){
 
 function showFinalPuzzle(){
 
+    // Save remaining time if you use it for scoring
+    bossBonus = timeLeft;
+
+    // Stop timer
     clearInterval(timerInterval);
 
     currentLevel = 2;
@@ -380,85 +425,116 @@ function showFinalPuzzle(){
     "Current Level: 2";
 
     document.getElementById("timer")
-    .style.color = "green";
+    .style.color =
+    "green";
 
     document.getElementById("timer")
     .textContent =
-    "👑 Boss Level - Unlimited Time";
+    "👑 Boss Level - No Time Limit";
 
+    document.getElementById("score")
+    .textContent =
+    "👑 Boss Puzzle";
 
     const answers =
-    puzzles.map(p=>p.sum);
+    puzzles.map(p => p.sum);
 
     let a =
-    answers[Math.floor(Math.random()*answers.length)];
+    answers[Math.floor(
+        Math.random() * answers.length
+    )];
 
     let b;
 
     do{
         b =
-        answers[Math.floor(Math.random()*answers.length)];
+        answers[Math.floor(
+            Math.random() * answers.length
+        )];
     }
-    while(a===b);
+    while(a === b);
 
-    const sum = a+b;
+    const sum = a + b;
 
-    let numbers = [a,b,sum];
+let numbers =
+puzzles.map(p => p.sum);
 
-    while(numbers.length < 9){
 
-        const fake =
-        Math.floor(Math.random()*80)+1;
-
-        if(!numbers.includes(fake)){
-            numbers.push(fake);
-        }
-    }
 
     finalPuzzle = {
-        a,b,sum,
-        numbers:shuffle(numbers)
-    };
+    a,
+    b,
+    sum,
+    numbers
+};
 
-    game.innerHTML="";
+
+    game.innerHTML = "";
 
     const board =
     document.createElement("div");
 
-    board.className="finalBoard";
+    board.className = "finalBoard";
 
-    let selected=[];
+    let selected = [];
 
     finalPuzzle.numbers.forEach(number=>{
 
         const cell =
         document.createElement("div");
 
-        cell.className="cell";
-        cell.style.fontSize="3rem";
-        cell.textContent=number;
+        cell.className = "cell";
+        cell.style.fontSize = "3rem";
+        cell.textContent = number;
 
         cell.addEventListener("click",()=>{
 
-            if(cell.classList.contains("selected"))
-            return;
+            if(selected.length >= 2){
+                return;
+            }
+
+            if(cell.classList.contains("selected")){
+                return;
+            }
 
             selected.push(number);
 
             cell.classList.add("selected");
 
-            if(selected.length===2){
+            if(selected.length === 2){
 
                 const correct =
-                (selected[0]===a &&
-                 selected[1]===b) ||
+                (selected[0] === a &&
+                 selected[1] === b) ||
 
-                (selected[1]===a &&
-                 selected[0]===b);
+                (selected[1] === a &&
+                 selected[0] === b);
 
                 if(correct){
 
-                    clearInterval(timerInterval);
+                    score += 50;
+                    score += bossBonus;
+
+                  // Difficulty multiplier
+    if(maxNumber === 40){
+        score = Math.round(score * 1.5);
+    }
+    else if(maxNumber === 60){
+        score = score * 2;
+    }
+
+                    document.getElementById("scorePoints")
+                    .textContent =
+                    `⭐ Score: ${score}`;
+
+                    if(score > highScore){
+
+                        highScore = score;
+
+                        document.getElementById("highScore")
+                        .textContent =
+                        `🏆 Best Score: ${highScore}`;
+                    }
 
                     celebrate();
 
@@ -475,17 +551,17 @@ function showFinalPuzzle(){
 
                     setTimeout(()=>{
 
-                        selected=[];
+                        selected = [];
 
-                        board.querySelectorAll(".selected")
-                        .forEach(c=>
+                        board
+                        .querySelectorAll(".selected")
+                        .forEach(c =>
                             c.classList.remove("selected")
                         );
 
                     },250);
                 }
             }
-
         });
 
         board.appendChild(cell);
@@ -497,6 +573,8 @@ function showFinalPuzzle(){
 
 function revealLevel1Answers(){
 
+    clearInterval(timerInterval);
+
     document.getElementById("message")
     .textContent =
     `⏰ Time Up! You solved ${solvedCount} out of 9 puzzles.`;
@@ -506,7 +584,12 @@ function revealLevel1Answers(){
 
     boards.forEach((board,index)=>{
 
-        if(board.dataset.solved) return;
+        // Skip puzzles already solved
+        if(board.dataset.solved){
+            return;
+        }
+
+        const puzzle = puzzles[index];
 
         board.innerHTML = "";
 
@@ -515,13 +598,14 @@ function revealLevel1Answers(){
 
         reveal.className = "failed";
 
-        reveal.textContent =
-        puzzles[index].sum;
+        reveal.textContent = puzzle.sum;
 
         board.appendChild(reveal);
 
     });
+
 }
+
 
 function revealLevel2Answer(){
 
@@ -561,33 +645,52 @@ function celebrate(){
 
 function resetGame(){
 
+  const difficulty =
+document.getElementById("difficulty").value;
+
+let difficultyText = "";
+
+if(difficulty === "easy"){
+    maxNumber = 20;
+    difficultyText = "Easy";
+}
+else if(difficulty === "medium"){
+    maxNumber = 40;
+    difficultyText = "Medium";
+}
+else{
+    maxNumber = 60;
+    difficultyText = "Hard";
+}
+
     clearInterval(timerInterval);
 
-    puzzles = [];
-    solvedCount = 0;
-    currentLevel = 1;
-    finalPuzzle = null;
+    puzzles=[];
+    solvedCount=0;
+    score = 0;
+    currentLevel=1;
+    finalPuzzle=null;
 
-    document.getElementById("timer").style.color =
-    "#d32f2f";
+   document.getElementById("scorePoints").textContent =
+"⭐ Score: 0";
 
-    document.getElementById("timer").textContent =
-    "⏰ Time Left: 180";
-
-    document.getElementById("levelDisplay").textContent =
+    document.getElementById("levelDisplay")
+    .textContent =
     "Current Level: 1";
+
+  document.getElementById("timer").style.color =
+"#d32f2f";
 
     document.getElementById("timer")
     .textContent =
-    "⏰ Time Left: 180";
+    "⏰ Time Left: 300";
 
     document.getElementById("score")
     .textContent =
     "Solved: 0 / 9";
 
-    document.getElementById("message")
-    .textContent =
-    "Find the two numbers that add to another number in the grid.";
+    document.getElementById("message").textContent =
+`${difficultyText} Mode | Find the two numbers that add to another number in the grid.`;
 
     for(let i=0;i<9;i++){
         puzzles.push(createPuzzle());
