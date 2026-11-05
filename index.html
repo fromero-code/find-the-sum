@@ -119,9 +119,12 @@ button{
     background:#c62828;
     color:white;
 
-    font-size:5rem;
+    text-align:center;
+
+    font-size:2.5rem;
     font-weight:bold;
 }
+
 
 
 .finalBoard{
@@ -189,6 +192,12 @@ button{
 </select>
 
 <button onclick="resetGame()">🔄 New Game</button>
+
+  <button onclick="showResetConfirm()">
+🏆 Reset Best Score
+</button>
+
+<div id="resetConfirmArea"></div>
 
 <div id="timer">⏰ Time Left: 300</div>
 
@@ -435,29 +444,33 @@ function showFinalPuzzle(){
     document.getElementById("score")
     .textContent =
     "👑 Boss Puzzle";
+ const answers =
+  puzzles.map(p => p.sum);
 
-    const answers =
-    puzzles.map(p => p.sum);
+    let a, b, sum;
 
-    let a =
-    answers[Math.floor(
-        Math.random() * answers.length
-    )];
+for(let i=0;i<answers.length;i++){
 
-    let b;
+    for(let j=i+1;j<answers.length;j++){
 
-    do{
-        b =
-        answers[Math.floor(
-            Math.random() * answers.length
-        )];
+        const target =
+        answers[i] + answers[j];
+
+        if(answers.includes(target)){
+
+            a = answers[i];
+            b = answers[j];
+            sum = target;
+
+            break;
+        }
     }
-    while(a === b);
 
-    const sum = a + b;
+    if(sum) break;
+}
 
-let numbers =
-puzzles.map(p => p.sum);
+let numbers = [...answers];
+
 
 
 
@@ -584,7 +597,6 @@ function revealLevel1Answers(){
 
     boards.forEach((board,index)=>{
 
-        // Skip puzzles already solved
         if(board.dataset.solved){
             return;
         }
@@ -598,12 +610,22 @@ function revealLevel1Answers(){
 
         reveal.className = "failed";
 
-        reveal.textContent = puzzle.sum;
+        reveal.innerHTML =
+        `
+        <div>
+            ${puzzle.a}
+            +
+            ${puzzle.b}
+            <br>
+            =
+            <br>
+            ${puzzle.sum}
+        </div>
+        `;
 
         board.appendChild(reveal);
 
     });
-
 }
 
 
@@ -642,6 +664,39 @@ function celebrate(){
         },5000);
     }
 }
+
+function showResetConfirm(){
+
+    document.getElementById("resetConfirmArea")
+    .innerHTML = `
+        <button onclick="resetHighScore()">
+            ✅ Confirm Reset
+        </button>
+
+        <button onclick="cancelReset()">
+            ❌ Cancel
+        </button>
+    `;
+}
+
+function resetHighScore(){
+
+    highScore = 0;
+
+    document.getElementById("highScore")
+    .textContent =
+    "🏆 Best Score: 0";
+
+    document.getElementById("resetConfirmArea")
+    .innerHTML = "";
+}
+
+function cancelReset(){
+
+    document.getElementById("resetConfirmArea")
+    .innerHTML = "";
+}
+
 
 function resetGame(){
 
@@ -692,9 +747,37 @@ else{
     document.getElementById("message").textContent =
 `${difficultyText} Mode | Find the two numbers that add to another number in the grid.`;
 
+    while(true){
+
+    puzzles = [];
+
     for(let i=0;i<9;i++){
         puzzles.push(createPuzzle());
     }
+
+    const answers =
+    puzzles.map(p => p.sum);
+
+    let bossCount = 0;
+
+    for(let i=0;i<answers.length;i++){
+
+        for(let j=i+1;j<answers.length;j++){
+
+            const target =
+            answers[i] + answers[j];
+
+            if(answers.includes(target)){
+                bossCount++;
+            }
+        }
+    }
+
+    if(bossCount === 1){
+        break;
+    }
+}
+
 
     buildLevel1();
     startTimer();
